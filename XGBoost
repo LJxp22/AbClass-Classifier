@@ -1,4 +1,3 @@
-# ===================== Imports =====================
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
@@ -9,7 +8,6 @@ from sklearn.metrics import (
 from xgboost import XGBClassifier
 from imblearn.under_sampling import RandomUnderSampler
 
-# ===================== Load & Preprocess Data =====================
 # Load CSV
 data = pd.read_csv(r"C:\Users\13449\Desktop\大创\final5.csv")
 
@@ -26,20 +24,20 @@ data['label'] = data['label'].astype('float32')
 X = data.drop('label', axis=1).values
 y = data['label'].values.astype(int) - 1  # now y ranges from 0 to 5
 
-# ===================== Train/Test Split =====================
+# Train/Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
 
-# ===================== Feature Scaling =====================
+#Feature Scaling
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# ===================== Optional: Handle Class Imbalance =====================
-# Uncomment if needed (e.g., if some classes are underrepresented)
+#  Handle Class Imbalance
+# Uncomment if needed
 # rus = RandomUnderSampler(random_state=42)
 # X_train_scaled, y_train = rus.fit_resample(X_train_scaled, y_train)
 
-# ===================== Define XGBoost Model =====================
+# Define XGBoost Model
 xgb_clf = XGBClassifier(
     max_depth=3,
     learning_rate=0.1,
@@ -52,7 +50,7 @@ xgb_clf = XGBClassifier(
     eval_metric='mlogloss'
 )
 
-# ===================== Cross-Validation (on training set) =====================
+# Cross-Validation (on training set) 
 scoring = {
     'accuracy': 'accuracy',
     'f1_score': make_scorer(f1_score, average='weighted'),
@@ -68,10 +66,10 @@ print(f"Average F1 Score:  {cv_results['test_f1_score'].mean():.4f}")
 print(f"Average Precision: {cv_results['test_precision'].mean():.4f}")
 print(f"Average Recall:    {cv_results['test_recall'].mean():.4f}")
 
-# ===================== Model Training =====================
+# Model Training 
 xgb_clf.fit(X_train_scaled, y_train)
 
-# ===================== Evaluate on Test Set =====================
+# Evaluate on Test Set
 y_test_pred = xgb_clf.predict(X_test_scaled)
 test_accuracy = accuracy_score(y_test, y_test_pred)
 
@@ -80,7 +78,7 @@ print(f"Test Accuracy: {test_accuracy:.4f}")
 print("Classification Report (Test):")
 print(classification_report(y_test, y_test_pred))
 
-# ===================== Evaluate on Training Set =====================
+#  Evaluate on Training Set
 y_train_pred = xgb_clf.predict(X_train_scaled)
 train_accuracy = accuracy_score(y_train, y_train_pred)
 
