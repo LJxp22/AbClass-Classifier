@@ -3,7 +3,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+from sklearn.metrics import (
+    confusion_matrix, accuracy_score, classification_report,
+    precision_score, recall_score, f1_score
+)
 from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
@@ -20,6 +23,7 @@ def load_data(file_path):
     # Adjust labels to start from 0
     data['label'] = data['label'].astype('float32') - 1
     
+    print(f"Data loaded successfully, {len(data)} samples remaining")
     return data
 
 def prepare_data(data):
@@ -27,7 +31,7 @@ def prepare_data(data):
     X = data.drop('label', axis=1).values
     y = data['label'].values
     
-    # Split dataset into training and test sets
+    # Stratified split to maintain class distribution
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -37,34 +41,45 @@ def prepare_data(data):
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
+    print(f"Training set size: {len(X_train)}, Test set size: {len(X_test)}")
     return X_train_scaled, X_test_scaled, y_train, y_test, scaler
 
 def train_model(X_train, y_train):
-    """Train a Random Forest classifier"""
+    """Train Random Forest classifier with class balancing"""
     model = RandomForestClassifier(
         n_estimators=165,            # Number of trees
         max_depth=4,                 # Maximum tree depth
         min_samples_leaf=5,          # Minimum samples per leaf
-        oob_score=True,              # Use out-of-bag samples for evaluation
-        random_state=42,             # Random seed for reproducibility
+        oob_score=True,              # Use out-of-bag evaluation
+        random_state=42,             # Reproducible results
         n_jobs=-1,                   # Use all CPU cores
         class_weight='balanced'      # Balance class weights
     )
     
     model.fit(X_train, y_train)
+    print("Model training completed")
     return model
 
 def evaluate_model(model, X_test, y_test, class_names=None):
-    """Evaluate model performance and generate visualizations"""
-    # Predict on test set
+    """Evaluate model with weighted metrics and visualizations"""
+    # Make predictions on test set
     y_pred = model.predict(X_test)
     
     # Calculate overall accuracy
-    accuracy = accuracy_score(y_test, y_pred)
-    print(f"\nOverall Accuracy: {accuracy:.4f}")
-    print(f"Out-of-Bag Estimated Accuracy: {model.oob_score_:.4f}")
+    overall_accuracy = accuracy_score(y_test, y_pred)
+    print(f"\nOverall Accuracy: {overall_accuracy:.4f}")
+    print(f"Out-of-Bag Accuracy: {model.oob_score_:.4f}")
     
-    # Print confusion matrix
+    # Calculate weighted metrics
+    weighted_precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+    weighted_recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+    weighted_f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
+    
+    print(f"Weighted Precision: {weighted_precision:.4f}")
+    print(f"Weighted Recall: {weighted_recall:.4f}")
+    print(f"Weighted F1-Score: {weighted_f1:.4f}")
+    
+    # Confusion matrix
     conf_matrix = confusion_matrix(y_test, y_pred)
     print("\nConfusion Matrix:")
     print(conf_matrix)
@@ -72,43 +87,27 @@ def evaluate_model(model, X_test, y_test, class_names=None):
     # Plot confusion matrix
     plt.figure(figsize=(10, 8))
     cm_display = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=class_names)
-    cm_display.plot(cmap='Blues')
-    plt.title('Confusion Matrix')
+    cm_display.plot(cmap='Blues', values_format='d')
+    plt.title('Confusion Matrix (Weighted Metrics)')
     plt.tight_layout()
     plt.show()
     
-    # Print classification report
-    print("\nClassification Report:")
-    report = classification_report(y_test, y_pred, target_names=class_names)
+    # Generate weighted classification report
+    print("\nWeighted Classification Report:")
+    report = classification_report(
+        y_test, y_pred, 
+        target_names=class_names,
+        average='weighted',
+        zero_division=0
+    )
     print(report)
     
-    return accuracy, conf_matrix, report
-
-def main():
-    """Main workflow"""
-    file_path = "path/to/your/data.csv"  # Replace with actual data path
-    
-    # Define class names (adjust according to your data)
-    class_names = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5']
-    
-    try:
-        # Load data
-        data = load_data(file_path)
-        print(f"Data loaded successfully with {len(data)} samples")
-        
-        # Prepare data
-        X_train, X_test, y_train, y_test, scaler = prepare_data(data)
-        print(f"Training set size: {len(X_train)}, Test set size: {len(X_test)}")
-        
-        # Train model
-        model = train_model(X_train, y_train)
-        print("Model training completed")
-        
-        # Evaluate model
-        evaluate_model(model, X_test, y_test, class_names)
-        
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-
-if __name__ == "__main__":
-    main()
+    return {
+        "accuracy": overall_accuracy,
+        "oob_accuracy": model.oob_score_,
+        "weighted_precision": weighted_precision,
+        "weighted_recall": weighted_recall,
+        "weighted_f1": weighted_f1,
+        "confusion_matrix": conf_matrix,
+        "report": report
+    }
