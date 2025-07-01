@@ -1,0 +1,117 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import (
+    accuracy_score, classification_report, f1_score, precision_score, recall_score, make_scorer
+)
+from xgboost import XGBClassifier
+
+def load_data(file_path):
+    """Load and preprocess the dataset"""
+    data = pd.read_csv(file_path)
+
+    # Drop unused column
+    data.drop("V1", axis=1, inplace=True)
+
+    # Convert numeric columns (except first column, assuming it's label)
+    numeric_columns = data.columns[1:]
+    data[numeric_columns] = data[numeric_columns].apply(pd.to_numeric, errors='coerce')
+    data.dropna(inplace=True)
+
+    # Convert label to float and subtract 1 to make it zero-indexed (0-5)
+    data['label'] = data['label'].astype('float32')
+
+    return data
+
+def prepare_data(data):
+    """Prepare training and test datasets"""
+    X = data.drop('label', axis=1).values
+    y = data['label'].values.astype(int) - 1  # now y ranges from 0 to 5
+
+    # Train/Test Split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=True)
+
+    #Feature Scaling
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    #  Handle Class Imbalance
+    # Uncomment if needed
+    # rus = RandomUnderSampler(random_state=42)
+    # X_train_scaled, y_train = rus.fit_resample(X_train_scaled, y_train)
+
+    return X_train_scaled, y_train, X_test_scaled, y_test
+
+def train_model(X_train_scaled, y_train):
+    """Train RandomForestClassifier with class balancing"""
+    xgb_clf = XGBClassifier(
+        max_depth=3,
+        learning_rate=0.1,
+        objective='multi:softmax',
+        num_class=6,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        use_label_encoder=False,
+        eval_metric='mlogloss'
+    )
+
+    # Cross-Validation (on training set)
+    scoring = {
+        'accuracy': 'accuracy',
+        'f1_score': make_scorer(f1_score, average='weighted'),
+        'precision': make_scorer(precision_score, average='weighted'),
+        'recall': make_scorer(recall_score, average='weighted')
+    }
+
+    cv_results = cross_validate(xgb_clf, X_train_scaled, y_train, cv=5, scoring=scoring)
+
+    print("\n Cross-Validation Scores (Training Set) ")
+    print(f"Average Accuracy:  {cv_results['test_accuracy'].mean():.4f}")
+    print(f"Average F1 Score:  {cv_results['test_f1_score'].mean():.4f}")
+    print(f"Average Precision: {cv_results['test_precision'].mean():.4f}")
+    print(f"Average Recall:    {cv_results['test_recall'].mean():.4f}")
+
+    # Model Training
+    xgb_clf.fit(X_train_scaled, y_train)
+
+    #  Evaluate on Training Set
+    y_train_pred = xgb_clf.predict(X_train_scaled)
+    train_accuracy = accuracy_score(y_train, y_train_pred)
+
+    print("\nTraining Set Evaluation")
+    print(f"Training Accuracy: {train_accuracy:.4f}")
+    print("Classification Report (Train):")
+    print(classification_report(y_train, y_train_pred))
+
+    return xgb_clf
+
+# Evaluate model performance
+def evaluate_model(xgb_clf, X_test_scaled, y_test):
+
+    # Evaluate on Test Set
+    y_test_pred = xgb_clf.predict(X_test_scaled)
+    test_accuracy = accuracy_score(y_test, y_test_pred)
+
+    print("\nTest Set Evaluation")
+    print(f"Test Accuracy: {test_accuracy:.4f}")
+    print("Classification Report (Test):")
+    print(classification_report(y_test, y_test_pred))
+
+
+if __name__ == "__main__":
+    # Load data
+    file_path = "data.csv"
+    data = load_data(file_path)
+
+    # Prepare data
+    X_train_scaled, y_train, X_test_scaled, y_test = prepare_data(data)
+
+    # Train model
+    xgb_clf = train_model(X_train_scaled, y_train)
+
+    # Evaluate model
+    evaluate_model(xgb_clf, X_test_scaled, y_test)
+
+
