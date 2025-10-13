@@ -15,7 +15,6 @@ This repository contains implementations of multiple machine learning and deep l
 
 
 ## Algorithms Included
-
 We used the following algorithms to build different classifiers:
 - **AdaBoost**
 - **CatBoost**
@@ -27,7 +26,6 @@ We used the following algorithms to build different classifiers:
 
 
 ## Workflow for Each Classifier
-
 For all classification algorithms in this project, the following workflow steps are consistently applied:
 1. **Data Preprocessing**
 2. **Model Construction**
@@ -36,67 +34,54 @@ For all classification algorithms in this project, the following workflow steps 
 
 
 ## CD-HIT Guide
-
 ### 1. Introduction
-CD-HIT is a tool for sequence clustering and redundancy reduction. By setting a sequence identity threshold, it clusters highly similar sequences and retains the longest (or most representative) sequence from each cluster, thereby generating a non-redundant dataset. 
+CD-HIT is a tool for sequence clustering and redundancy reduction. By setting a sequence identity threshold, it clusters highly similar sequences and retains the longest (or most representative) sequence from each cluster, generating a non-redundant dataset.  
 
-In this project, CD-HIT is used to reduce redundancy of raw sequences in the `data/raw/` directory. The output file `data/processed/non_redundant.fasta` provides high-quality data for subsequent feature extraction and model training.
+In this project, CD-HIT reduces redundancy of raw sequences in `data/raw/`, with the output `data/processed/non_redundant.fasta` used for downstream feature extraction and model training.  
 
-For full details, see: [CD-HIT Official GitHub](https://github.com/weizhongli/cdhit)
+For full details: [CD-HIT Official GitHub](https://github.com/weizhongli/cdhit)
 
 
 ### 2. Installation
-#### Option 1: Installation via Package Manager (Recommended for Ubuntu/Debian)
+#### Option 1: Ubuntu/Debian (Package Manager)
 ```bash
-sudo apt update
-sudo apt install cd-hit
+sudo apt update && sudo apt install cd-hit
 ```
 
-#### Option 2: From Source (All Linux Distributions)
+#### Option 2: All Linux (From Source)
 ```bash
-# Download source code
 wget https://github.com/weizhongli/cdhit/archive/refs/tags/V4.8.1.tar.gz
-
-# Extract archive
-tar -zxvf V4.8.1.tar.gz
-
-# Enter source directory
-cd cdhit-4.8.1
-
-# Compile
-make
-
-# Optional: Add to system PATH for global access
-sudo cp cd-hit /usr/local/bin/
+tar -zxvf V4.8.1.tar.gz && cd cdhit-4.8.1 && make
+sudo cp cd-hit /usr/local/bin/  # Optional: Add to system PATH
 ```
 
 
-### 3. Command (Run Directly in Linux Terminal)
-Replace `[path/to/raw_sequences.fasta]` with the full/relative path to your raw sequence file, and `[path/to/output]` with your desired output directory:
+### 3. Run Command
+Replace `data/raw/your_raw_sequences.fasta` with your raw sequence path:
 ```bash
 cd-hit -i data/raw/your_raw_sequences.fasta \
        -o data/processed/non_redundant.fasta \
-       -c 0.4 \          # Sequence identity threshold
-       -n 2 \            # k-mer length (optimal for -c=0.4)
+       -c 0.4 \          # ≥40% sequence identity threshold
+       -n 2 \            # Optimal k-mer length for -c=0.4
        -d 0 \            # Preserve full sequence names
-       -M 16000 \        # Memory limit (16000 MB = 16 GB)
-       -T 8              # Number of threads (max ≤ CPU core count)
+       -M 16000 \        # Memory limit (16GB)
+       -T 8              # Use 8 CPU threads
 ```
 
 
 ### 4. Key Parameters Explained
-- `-i`: Input raw sequence file (default path: `data/raw/your_raw_sequences.fasta`)
-- `-o`: Output prefix (generates `non_redundant.fasta` and a cluster details file)
-- `-c 0.4`: Clusters sequences with ≥40% identity (defines the redundancy threshold)
+- `-i`: Input raw sequence file (default: `data/raw/your_raw_sequences.fasta`)
+- `-o`: Output prefix (generates `non_redundant.fasta` and cluster details file)
+- `-c 0.4`: Cluster sequences with ≥40% identity
 - `-n 2`: Optimal k-mer length for `-c=0.4` (ensures clustering accuracy)
-- `-d 0`: Preserve full sequence names in the output file (no truncation)
-- `-M`: Memory limit in MB (adjust based on your system's available memory)
-- `-T`: Number of threads for parallel processing (speed up clustering)
+- `-d 0`: Preserve full sequence names (no truncation)
+- `-M`: Memory limit (MB, adjust by system)
+- `-T`: Number of threads (max ≤ CPU core count)
 
 
 ### 5. Output Files
-- `data/processed/non_redundant.fasta`: Non-redundant sequence set (used for downstream analysis)
-- `data/processed/non_redundant.fasta.clstr`: Cluster details (optional, for verifying redundancy reduction)
+- `data/processed/non_redundant.fasta`: Non-redundant sequences (for downstream use)
+- `data/processed/non_redundant.fasta.clstr`: Cluster details (optional verification)
 
 
 ### References
@@ -105,23 +90,23 @@ cd-hit -i data/raw/your_raw_sequences.fasta \
 
 
 ## Feature Guide
-This guide details the steps to extract three key feature types (AAC-PSSM, PseAAC, CTDC) using dedicated web servers, consistent with the manuscript **"Computational Models for Predicting Antibody Specificity Using Heavy Chain Features"**. All inputs use the preprocessed `cleaned_sequences.fasta` file.
+This guide details extraction of 3 key features (AAC-PSSM, PseAAC, CTDC) for antibody sequences, using preprocessed `cleaned_sequences.fasta`.
 
 
 ### Step 1: Extract Each Feature Type
 | Feature Type | Web Server URL                | Parameter Settings (Manuscript-Aligned) | Output File          |
 |--------------|--------------------------------|------------------------------------------|----------------------|
 | AAC-PSSM     | https://possum.erc.monash.edu/ | Iterations=60, E-value=0.001, Database=UniRef50 | aac_pssm.csv         |
-| PseAAC       | http://www.csbio.sjtu.edu.cn/bioinf/PseAAC/ | PseAA mode=Type 1; Amino acid character=Hydrophobicity, Hydrophilicity, Mass, pK1 (alpha-COOH), pK2 (NH3), pI (at 25°C); Weight factor=0.05; Lambda parameter=2 | pse_aac.txt          |
+| PseAAC       | http://www.csbio.sjtu.edu.cn/bioinf/PseAAC/ | PseAA mode=Type 1; Amino acid character=Hydrophobicity, Hydrophilicity, Mass, pK1 (alpha-COOH), pK2 (NH3), pI (25°C); Weight=0.05; Lambda=2 | pse_aac.txt (convert to CSV) |
 | CTDC         | https://ifeature.erc.monash.edu/ | Descriptor=CTDC | ctdc.csv |
 
 #### Notes:
-- For PseAAC: After downloading the `pse_aac.txt` file, convert it to CSV format (e.g., `pse_aac.csv`).
-- Download all output files as CSV and save them to the `data/processed/` directory.
+- Convert `pse_aac.txt` to CSV (rename to `pse_aac.csv`).
+- Save all outputs to `data/processed/`.
 
 
-### Step 2: Merge Features into One Matrix
-Run the provided Python script to combine the three CSV feature files into a single matrix:
+### Step 2: Merge Features
+Run the script to combine 3 feature files into one matrix:
 ```bash
 python src/feature_extraction/merge_features.py \
        --aac_pssm data/processed/aac_pssm.csv \
@@ -130,3 +115,121 @@ python src/feature_extraction/merge_features.py \
        --output data/processed/merged_features.csv
 ```
 
+
+## Model Details
+### 1. AdaBoost
+#### Core Initial Hyperparameters
+- Base estimator: Decision Tree (`max_depth=6`)
+- Number of estimators: `140`
+- Random state: `42`
+
+#### Hyperparameter Search Ranges
+| Hyperparameter               | Range          |
+|------------------------------|----------------|
+| `base_estimator__max_depth`  | [3, 10]        |
+| `n_estimators`               | [50, 200]      |
+| `learning_rate`              | [0.01, 0.3]    |
+| `algorithm`                  | ['SAMME', 'SAMME.R'] |
+
+
+### 2. CatBoost
+#### Core Initial Hyperparameters
+- Iterations: `1000`
+- Tree depth: `5`
+- Learning rate: `0.1`
+- Loss function: `MultiClass`
+- Random state: `42`
+
+#### Hyperparameter Search Ranges
+| Hyperparameter               | Range          |
+|------------------------------|----------------|
+| `depth`                      | [3, 10]        |
+| `learning_rate`              | [0.001, 0.3]   |
+| `iterations`                 | [500, 2000]    |
+| `l2_leaf_reg`                | [0, 10]        |
+| `subsample`                  | [0.6, 1.0]     |
+
+
+### 3. LightGBM
+#### Core Initial Hyperparameters
+- Boosting type: `gbdt`
+- Number of leaves: `31`
+- Learning rate: `0.1`
+- Number of estimators: `500`
+- Feature fraction: `0.9`
+- Bagging fraction: `0.8`
+- Bagging frequency: `5`
+- Objective: `binary` (use `multiclass` for >2 classes)
+- Random state: `42`
+
+#### Hyperparameter Search Ranges
+| Hyperparameter               | Range          |
+|------------------------------|----------------|
+| `num_leaves`                 | [20, 150]      |
+| `max_depth`                  | [3, 10]        |
+| `learning_rate`              | [0.001, 0.3]   |
+| `n_estimators`               | [200, 1000]    |
+| `min_child_samples`          | [5, 100]       |
+
+
+### 4. Random Forest
+#### Core Initial Hyperparameters
+- Number of estimators: `165`
+- Tree depth: `5`
+- Minimum samples per leaf: `5`
+- OOB score: `True`
+- Class weight: `balanced`
+- Random state: `42`
+
+#### Hyperparameter Search Ranges
+| Hyperparameter               | Range          |
+|------------------------------|----------------|
+| `n_estimators`               | [100, 300]     |
+| `max_depth`                  | [3, 15]        |
+| `min_samples_leaf`           | [1, 20]        |
+| `max_features`               | ['sqrt', 'log2', 0.5, 0.7, 1.0] |
+| `class_weight`               | ['balanced', 'balanced_subsample', None] |
+
+
+### 5. XGBoost
+#### Core Initial Hyperparameters
+- Tree depth: `3`
+- Learning rate: `0.1`
+- Objective: `multi:softmax` (6 classes)
+- Subsample: `0.8`
+- Colsample by tree: `0.8`
+- Eval metric: `mlogloss`
+- Random state: `42`
+
+#### Hyperparameter Search Ranges
+| Hyperparameter               | Range          |
+|------------------------------|----------------|
+| `max_depth`                  | [3, 10]        |
+| `learning_rate`              | [0.001, 0.3]   |
+| `n_estimators`               | [100, 1000]    |
+| `gamma`                      | [0, 5]         |
+| `reg_alpha`                  | [0, 5]         |
+| `reg_lambda`                 | [0, 5]         |
+
+
+### 6. Stacking Ensemble
+#### Architecture
+| Layer          | Model Name               | Core Initial Hyperparameters |
+|----------------|--------------------------|-------------------------------|
+| Base (1st)     | Logistic Regression      | `max_iter=3000`, `C=0.1`, `random_state=1412` |
+| Base (1st)     | Random Forest            | `n_estimators=165`, `max_depth=4`, `min_samples_leaf=4`, `random_state=1412` |
+| Base (1st)     | SVM                      | `C=10` |
+| Base (1st)     | KNN                      | `n_neighbors=10` |
+| Final (2nd)    | Random Forest            | `n_estimators=100`, `min_impurity_decrease=0.0025`, `random_state=420` |
+
+
+### 7. Transformer-based Deep Learning Model
+#### Core Initial Hyperparameters
+- Number of encoder layers: `6`
+- Embedding dimension: `81` (matches input feature count)
+- Feedforward dimension: `256` (2-4× embed_dim)
+- Number of attention heads: `8` (embed_dim divisible by heads)
+- L2 regularization: `0.56`
+- Learning rate: `0.001`
+- Dropout rate: `0.1`
+- Number of classes: `6`
