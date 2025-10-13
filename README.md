@@ -108,7 +108,7 @@ cd-hit -i data/raw/your_raw_sequences.fasta \
 This guide details the steps to extract three key feature types (AAC-PSSM, PseAAC, CTDC) using dedicated web servers, consistent with the manuscript **"Computational Models for Predicting Antibody Specificity Using Heavy Chain Features"**. All inputs use the preprocessed `cleaned_sequences.fasta` file.
 
 
-### 3.1 Step 1: Extract Each Feature Type
+### Step 1: Extract Each Feature Type
 | Feature Type | Web Server URL                | Parameter Settings (Manuscript-Aligned) | Output File          |
 |--------------|--------------------------------|------------------------------------------|----------------------|
 | AAC-PSSM     | https://possum.erc.monash.edu/ | Iterations=60, E-value=0.001, Database=UniRef50 | aac_pssm.csv         |
@@ -120,7 +120,7 @@ This guide details the steps to extract three key feature types (AAC-PSSM, PseAA
 - Download all output files as CSV and save them to the `data/processed/` directory.
 
 
-### 3.2 Step 2: Merge Features into One Matrix
+### Step 2: Merge Features into One Matrix
 Run the provided Python script to combine the three CSV feature files into a single matrix:
 ```bash
 python src/feature_extraction/merge_features.py \
@@ -129,3 +129,4 @@ python src/feature_extraction/merge_features.py \
        --ctdc data/processed/ctdc.csv \
        --output data/processed/merged_features.csv
 ```
+
