@@ -232,4 +232,5 @@ python src/feature_extraction/merge_features.py \
 - L2 regularization: `0.56`
 - Learning rate: `0.001`
 - Dropout rate: `0.1`
-- Number of classes: `6`
+- Number of classes: `5`
+
