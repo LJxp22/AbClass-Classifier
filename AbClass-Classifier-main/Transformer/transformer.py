@@ -130,7 +130,7 @@ def model():
     embed_dim = 81
     feedforward_dim = 256
     num_heads = 8
-    num_classes = 6
+    num_classes = 5
     l2_regularization = 0.56
     learning_rate = 0.001
 
@@ -276,6 +276,7 @@ if __name__ == "__main__":
     model = model()
 
     evaluate_model(model, X_train, X_test, y_train, y_test)
+
 
 
 
