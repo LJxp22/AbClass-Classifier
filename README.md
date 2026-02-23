@@ -32,6 +32,13 @@ For all classification algorithms in this project, the following workflow steps 
 3. **Model Training**
 4. **Testing and Evaluation**
 
+## Sequence Retrieval Strategy 
+#### 1. NCBI Protein Database Search Queries
+- Dengue antibody: `“anti-dengue” AND “heavy chain”`
+- Influenza antibody: `“anti-influenza” AND “heavy chain”`
+- Tetanus antibody: `“anti-tetanus” AND “heavy chain”`
+- SARS-CoV-2 antibody: `“anti-SARS-CoV-2” AND “heavy chain”`
+- Tuberculosis antibody: `“anti-tuberculosis” AND “heavy chain”`
 
 ## CD-HIT Guide
 ### 1. Introduction
@@ -234,5 +241,6 @@ python src/feature_extraction/merge_features.py \
 - Learning rate: `0.001`
 - Dropout rate: `0.1`
 - Number of classes: `5`
+
 
 
