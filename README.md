@@ -92,7 +92,7 @@ cd-hit -i data/raw/your_raw_sequences.fasta \
 ## Feature Guide
 This guide details extraction of 3 key features (AAC-PSSM, PseAAC, CTDC) for antibody sequences, using preprocessed `cleaned_sequences.fasta`.
 
-
+```markdown
 ### Step 1: Extract Each Feature Type
 | Feature Type | Web Server URL                | Parameter Settings (Manuscript-Aligned) | Output File          |
 |--------------|--------------------------------|------------------------------------------|----------------------|
@@ -122,7 +122,8 @@ python src/feature_extraction/merge_features.py \
 - Base estimator: Decision Tree (`max_depth=6`)
 - Number of estimators: `140`
 - Random state: `42`
-
+  
+```markdown
 #### Hyperparameter Search Ranges
 | Hyperparameter               | Range          |
 |------------------------------|----------------|
@@ -233,4 +234,5 @@ python src/feature_extraction/merge_features.py \
 - Learning rate: `0.001`
 - Dropout rate: `0.1`
 - Number of classes: `5`
+
 
