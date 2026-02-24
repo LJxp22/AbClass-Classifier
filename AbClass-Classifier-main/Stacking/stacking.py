@@ -58,6 +58,7 @@ def initialize_classifier():
 
     clf = StackingClassifier(estimators=estimators
                              , final_estimator=final_estimator
+                             ,cv=5
                              , n_jobs=8)
     return estimators,clf
 
@@ -121,6 +122,7 @@ if __name__ == "__main__":
     individual_estimators(estimators,X_train,y_train,X_test,y_test)
 
     shap_explainer(data,clf,X_test)
+
 
 
 
