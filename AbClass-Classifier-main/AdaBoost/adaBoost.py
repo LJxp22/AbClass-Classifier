@@ -1,111 +1,130 @@
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import make_scorer, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+)
 
+RANDOM_STATE = 42
+N_SPLITS = 5
 
 # Load and preprocess data
 def load_data(file_path):
-    """Load and preprocess dataset"""
-    data = pd.read_csv(file_path, encoding='gbk')
-    data.drop("V1", axis=1, inplace=True)
+    data = pd.read_csv(file_path, encoding="gbk")
 
-    # Convert numeric columns and handle missing values
+    if "V1" in data.columns:
+        data = data.drop(columns=["V1"])
+
     numeric_columns = data.columns[1:]
-    data[numeric_columns] = data[numeric_columns].apply(pd.to_numeric, errors='coerce')
-    data.dropna(inplace=True)
+    data[numeric_columns] = data[numeric_columns].apply(
+        pd.to_numeric, errors="coerce"
+    )
 
-    # Adjust labels to start from 0
-    data['label'] = data['label'].astype('float32') - 1
+    data = data.dropna()
+    data["label"] = data["label"].astype("float32") - 1
 
     return data
 
+# Train-test split
+def split_data(data):
+    X = data.drop("label", axis=1).values
+    y = data["label"].values
 
-# Prepare training and test data
-def prepare_data(data):
-    """Split data into training and test sets"""
-    X = data.drop('label', axis=1).values
-    y = data['label'].values
-
-    # Split dataset
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=True, random_state=42
+    return train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=y,
+        random_state=RANDOM_STATE,
     )
 
-    # Standardize features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+# Build Pipeline
+def build_model():
+    weak_classifier = DecisionTreeClassifier(
+        max_depth=6,
+        random_state=RANDOM_STATE,
+    )
 
-    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
+    adaboost = AdaBoostClassifier(
+        estimator=weak_classifier,
+        n_estimators=140,
+        random_state=RANDOM_STATE,
+    )
 
-# Train AdaBoost model
-def train_model(X_train_scaled,y_train):
-    # Define weak classifier
-    weak_classifier = DecisionTreeClassifier(max_depth=6, random_state=42)
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", adaboost),
+    ])
 
-    # Create AdaBoost classifier instance
-    adaboost = AdaBoostClassifier(base_estimator=weak_classifier, n_estimators=140, random_state=42)
+    return pipeline
+    
+# Cross Validation
+def cross_validate_model(model, X_train, y_train):
+    skf = StratifiedKFold(
+        n_splits=N_SPLITS,
+        shuffle=True,
+        random_state=RANDOM_STATE,
+    )
 
-    # Train model
-    adaboost.fit(X_train_scaled, y_train)
-
-    # Calculate training set score
-    train_score = adaboost.score(X_train_scaled, y_train)
-    print(f"Training set score: {train_score}")
-
-    # Perform 5-fold cross-validation
-    cv_scores = cross_val_score(adaboost, X_train_scaled, y_train, cv=5)
-
-    # Print cross-validation scores
-    print("Cross-validation scores:")
-    for i, score in enumerate(cv_scores):
-        print(f"Fold {i + 1}: {score}")
-
-    return adaboost
-
-# Evaluate model performance
-def evaluate_model(adaboost, X_test_scaled, y_test):
-    # Calculate test set score
-    test_score = adaboost.score(X_test_scaled, y_test)
-    print(f"Test set score: {test_score}")
-
-    # Define scorers
     scoring = {
-        'accuracy': 'accuracy',
-        'f1_score': make_scorer(f1_score, average='weighted'),
-        'precision': make_scorer(precision_score, average='weighted'),
-        'recall': make_scorer(recall_score, average='weighted')
+        "accuracy": "accuracy",
+        "f1": "f1_weighted",
+        "precision": "precision_weighted",
+        "recall": "recall_weighted",
     }
 
-    # Perform cross-validation with multiple metrics
-    cv_results_test = cross_validate(adaboost, X_test_scaled, y_test, cv=5, scoring=scoring)
+    cv_results = cross_validate(
+        model,
+        X_train,
+        y_train,
+        cv=skf,
+        scoring=scoring,
+    )
 
-    # Print average cross-validation scores
-    print("Test set cross-validation average scores:")
-    print(f"Average Accuracy: {cv_results_test['test_accuracy'].mean()}")
-    print(f"Average F1 Score: {cv_results_test['test_f1_score'].mean()}")
-    print(f"Average Precision: {cv_results_test['test_precision'].mean()}")
-    print(f"Average Recall: {cv_results_test['test_recall'].mean()}")
+    print("\n===== 5-Fold Cross Validation (Training Set) =====")
+    print(f"Accuracy: {cv_results['test_accuracy'].mean():.4f} ± {cv_results['test_accuracy'].std():.4f}")
+    print(f"F1: {cv_results['test_f1'].mean():.4f} ± {cv_results['test_f1'].std():.4f}")
+    print(f"Precision: {cv_results['test_precision'].mean():.4f} ± {cv_results['test_precision'].std():.4f}")
+    print(f"Recall: {cv_results['test_recall'].mean():.4f} ± {cv_results['test_recall'].std():.4f}")
 
-if __name__ == '__main__':
-    # Load data
+# Test Set Evaluation
+def evaluate_model(model, X_test, y_test):
+    y_pred = model.predict(X_test)
+
+    print("\n===== Test Set Evaluation =====")
+    print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+    print(f"Precision: {precision_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"Recall: {recall_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"F1 Score: {f1_score(y_test, y_pred, average='weighted'):.4f}")
+
+    print("\nClassification Report:\n")
+    print(classification_report(y_test, y_pred))
+
+    print("Confusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+
+# Main
+if __name__ == "__main__":
     file_path = "data.csv"
     data = load_data(file_path)
 
-    # Prepare data
-    X_train_scaled, X_test_scaled, y_train, y_test, scaler = prepare_data(data)
+    X_train, X_test, y_train, y_test = split_data(data)
 
-    # Train model
-    adaboost = train_model(X_train_scaled, y_train)
+    model = build_model()
 
-    # Evaluate model
-    evaluate_model(adaboost, X_test_scaled, y_test)
+    # 5-fold CV on training data
+    cross_validate_model(model, X_train, y_train)
 
+    # Train final model on full training data
+    model.fit(X_train, y_train)
 
-
-
-
-
+    # Evaluate on test set
+    evaluate_model(model, X_test, y_test)
