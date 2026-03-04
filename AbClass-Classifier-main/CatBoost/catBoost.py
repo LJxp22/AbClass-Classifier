@@ -1,95 +1,126 @@
 import pandas as pd
 from catboost import CatBoostClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, \
-    f1_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+)
+from sklearn.pipeline import Pipeline
 
 
-# Load and preprocess data
-def load_data(file_path):
-    """Load and preprocess dataset"""
-    data = pd.read_csv(file_path, encoding='gbk')
-    data.drop("V1", axis=1, inplace=True)
+RANDOM_STATE = 42
+N_SPLITS = 5
 
-    # Convert numeric columns and handle missing values
+
+def load_data(file_path: str) -> pd.DataFrame:
+    """Load and preprocess dataset."""
+    data = pd.read_csv(file_path, encoding="gbk")
+
+    if "V1" in data.columns:
+        data = data.drop(columns=["V1"])
+
     numeric_columns = data.columns[1:]
-    data[numeric_columns] = data[numeric_columns].apply(pd.to_numeric, errors='coerce')
-    data.dropna(inplace=True)
+    data[numeric_columns] = data[numeric_columns].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    data = data.dropna()
 
-    # Adjust labels to start from 0
-    data['label'] = data['label'].astype('float32') - 1
+    data["label"] = data["label"].astype("float32") - 1
 
     return data
 
 
-# Prepare training and test data
-def prepare_data(data):
-    """Split data into training and test sets"""
-    X = data.drop('label', axis=1).values
-    y = data['label'].values
+def split_data(data: pd.DataFrame):
+    """Split dataset into train and test sets."""
+    X = data.drop("label", axis=1).values
+    y = data["label"].values
 
-    # Split dataset
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, shuffle=True, random_state=42
+    return train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=y,
+        random_state=RANDOM_STATE,
     )
 
-    # Standardize features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
 
-    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
-
-
-# Train CatBoost model
-def train_model(X_train, y_train):
-    """Train CatBoost classifier"""
-    model = CatBoostClassifier(
+def build_model() -> CatBoostClassifier:
+    """Create CatBoost model."""
+    return CatBoostClassifier(
         iterations=1000,
         depth=5,
         learning_rate=0.1,
-        loss_function='MultiClass',
-        verbose=False
+        loss_function="MultiClass",
+        random_seed=RANDOM_STATE,
+        verbose=False,
     )
-    model.fit(X_train, y_train)
-    return model
 
 
-# Evaluate model performance
+def cross_validate(model, X_train, y_train):
+    """Perform 5-fold stratified cross-validation."""
+    skf = StratifiedKFold(
+        n_splits=N_SPLITS,
+        shuffle=True,
+        random_state=RANDOM_STATE,
+    )
+
+    acc_scores = cross_val_score(
+        model,
+        X_train,
+        y_train,
+        cv=skf,
+        scoring="accuracy",
+    )
+
+    f1_scores = cross_val_score(
+        model,
+        X_train,
+        y_train,
+        cv=skf,
+        scoring="f1_weighted",
+    )
+
+    print("\n===== 5-Fold Cross Validation =====")
+    print(f"Accuracy: {acc_scores.mean():.4f} ± {acc_scores.std():.4f}")
+    print(f"Weighted F1: {f1_scores.mean():.4f} ± {f1_scores.std():.4f}")
+
+
 def evaluate_model(model, X_test, y_test):
-    """Evaluate model and print metrics"""
+    """Evaluate model on test set."""
     y_pred = model.predict(X_test)
-    print("Classification Report:")
+
+    print("\n===== Test Set Evaluation =====")
     print(classification_report(y_test, y_pred))
 
-    print("\nConfusion Matrix:")
+    print("Confusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
 
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='weighted')
-    recall = recall_score(y_test, y_pred, average='weighted')
-    f1 = f1_score(y_test, y_pred, average='weighted')
-
     print("\nMetrics:")
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"F1 Score: {f1:.4f}")
+    print(f"Accuracy: {accuracy_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"Precision: {precision_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"Recall: {recall_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"F1 Score: {f1_score(y_test, y_pred, average='weighted'):.4f}")
 
-if __name__ == "__main__":
-    # Load data
-    file_path = "data.csv"
-    data = load_data(file_path)
 
-    # Prepare data
-    X_train, X_test, y_train, y_test, scaler = prepare_data(data)
+def main():
+    data = load_data("data.csv")
+    X_train, X_test, y_train, y_test = split_data(data)
 
-    # Train model
-    model = train_model(X_train, y_train)
+    model = build_model()
 
-    # Evaluate model
+    # 5-fold CV (only on training set)
+    cross_validate(model, X_train, y_train)
+
+    # Train final model on full training data
+    model.fit(X_train, y_train)
+
+    # Evaluate on test set
     evaluate_model(model, X_test, y_test)
 
 
-
+if __name__ == "__main__":
+    main()
