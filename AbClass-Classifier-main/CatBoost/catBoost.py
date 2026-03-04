@@ -100,7 +100,7 @@ def evaluate_model(model, X_test, y_test):
     print(confusion_matrix(y_test, y_pred))
 
     print("\nMetrics:")
-    print(f"Accuracy: {accuracy_score(y_test, y_pred, average='weighted'):.4f}")
+    print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
     print(f"Precision: {precision_score(y_test, y_pred, average='weighted'):.4f}")
     print(f"Recall: {recall_score(y_test, y_pred, average='weighted'):.4f}")
     print(f"F1 Score: {f1_score(y_test, y_pred, average='weighted'):.4f}")
@@ -124,3 +124,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
