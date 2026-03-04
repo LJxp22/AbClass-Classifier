@@ -112,7 +112,7 @@ def main():
 
     model = build_model()
 
-    # 5-fold CV (only on training set)
+    # 5-fold CV 
     cross_validate(model, X_train, y_train)
 
     # Train final model on full training data
@@ -124,4 +124,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
